@@ -1,0 +1,125 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# GitHub (instruções do Copilot são específicas deste projeto)
+.github/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.userprefs
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+!**/[Pp]ackages/repositories.config
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Windows
+[Tt]humbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.vstest*.log
+coverage*/
+*.coveragexml
+coveragereport/
+TestResults/
+
+# Publish output
+[Pp]ublish/
+publish/
+
+# Docker
+docker-compose.override.yml
+
+# Entity Framework Migrations (local)
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets & Environment
+appsettings.*.local.json
+appsettings.local.json
+*.pfx
+*.p12
+secrets.json
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+nlog-*.log
+logs/
+
+# Application Insights
+ApplicationInsights.config
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# Backup & temp
+*.bak
+*.tmp
+*.temp
+*~
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Redis
+dump.rdb

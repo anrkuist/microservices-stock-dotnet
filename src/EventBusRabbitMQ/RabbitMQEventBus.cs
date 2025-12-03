@@ -32,7 +32,7 @@ public class RabbitMQEventBus : IAsyncDisposable
         return new RabbitMQEventBus(connection);
     }
 
-    private RabbitMQEventBus(IConnection connection)
+    public RabbitMQEventBus(IConnection connection)
     {
         _connection = connection;
     }

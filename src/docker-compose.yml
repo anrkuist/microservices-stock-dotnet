@@ -1,8 +1,144 @@
-version: "3.8"
 services:
+  # === Infraestrutura ===
+  
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=Admin123!
+    ports:
+      - "5341:80"
+    volumes:
+      - seq-data:/data
+
+  # === APIs ===
+
+  identity-api:
+    build:
+      context: .
+      dockerfile: Identity.API/Dockerfile
+    container_name: identity-api
+    ports:
+      - "5171:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=IdentityDB;User Id=sa;Password=Your_password123;TrustServerCertificate=True
+      - Jwt__SecretKey=secret-key-poc-12345-ecommerce-microservices
+      - Jwt__Issuer=ecommerce-api
+      - Jwt__Audience=ecommerce-clients
+      - Seq__Url=http://seq:80
+    depends_on:
+      sqlserver:
+        condition: service_started
+      seq:
+        condition: service_started
+
+  stock-api:
+    build:
+      context: .
+      dockerfile: Stock.API/Dockerfile
+    container_name: stock-api
+    ports:
+      - "5216:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=StockDB;User Id=sa;Password=Your_password123;TrustServerCertificate=True
+      - RabbitMQ__Host=rabbitmq
+      - Jwt__SecretKey=secret-key-poc-12345-ecommerce-microservices
+      - Jwt__Issuer=ecommerce-api
+      - Jwt__Audience=ecommerce-clients
+      - Seq__Url=http://seq:80
+    depends_on:
+      sqlserver:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      seq:
+        condition: service_started
+
+  sales-api:
+    build:
+      context: .
+      dockerfile: Sales.API/Dockerfile
+    container_name: sales-api
+    ports:
+      - "5154:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=SalesDB;User Id=sa;Password=Your_password123;TrustServerCertificate=True
+      - ConnectionStrings__Redis=redis:6379
+      - RabbitMQ__Host=rabbitmq
+      - StockService__BaseUrl=http://stock-api:8080
+      - Jwt__SecretKey=secret-key-poc-12345-ecommerce-microservices
+      - Jwt__Issuer=ecommerce-api
+      - Jwt__Audience=ecommerce-clients
+      - Seq__Url=http://seq:80
+    depends_on:
+      sqlserver:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      stock-api:
+        condition: service_started
+      seq:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "5050:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__SecretKey=secret-key-poc-12345-ecommerce-microservices
+      - Jwt__Issuer=ecommerce-api
+      - Jwt__Audience=ecommerce-clients
+      - ReverseProxy__Clusters__sales__Destinations__sales-api__Address=http://sales-api:8080/
+      - ReverseProxy__Clusters__stock__Destinations__stock-api__Address=http://stock-api:8080/
+      - ReverseProxy__Clusters__identity__Destinations__identity-api__Address=http://identity-api:8080/
+    depends_on:
+      - identity-api
+      - sales-api
+      - stock-api
+
+volumes:
+  sqlserver-data:
+  redis-data:
+  seq-data:

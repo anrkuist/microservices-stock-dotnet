@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Order Notifications - E-commerce Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status {
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status.disconnected {
+            background: #fee;
+            color: #c33;
+            border: 2px solid #fcc;
+        }
+        
+        .status.connected {
+            background: #efe;
+            color: #393;
+            border: 2px solid #cfc;
+        }
+        
+        .status.subscribed {
+            background: #eef;
+            color: #339;
+            border: 2px solid #ccf;
+        }
+        
+        .status-icon {
+            font-size: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 10px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .notifications {
+            margin-top: 30px;
+            border-top: 2px solid #f0f0f0;
+            padding-top: 20px;
+        }
+        
+        .notifications h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .notification {
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .notification.confirmed {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+        
+        .notification.rejected {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .notification-status {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .notification-time {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .notification-message {
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .notification-details {
+            font-size: 12px;
+            color: #777;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Notificações em Tempo Real</h1>
+        <p class="subtitle">Sistema de E-commerce - SignalR Demo</p>
+        
+        <div id="connectionStatus" class="status disconnected">
+            <span class="status-icon">⚫</span>
+            <span>Desconectado</span>
+        </div>
+        
+        <div class="input-group">
+            <label for="token">Token JWT (obtenha em /auth/login):</label>
+            <input type="text" id="token" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        
+        <div class="input-group">
+            <label for="orderId">ID do Pedido para Monitorar:</label>
+            <input type="number" id="orderId" placeholder="123" value="1">
+        </div>
+        
+        <button id="connectBtn" onclick="connect()">🔌 Conectar ao Hub</button>
+        <button id="subscribeBtn" class="btn-secondary" onclick="subscribe()" disabled>📫 Inscrever no Pedido</button>
+        
+        <div class="notifications">
+            <h3>📬 Notificações Recebidas:</h3>
+            <div id="notificationsList">
+                <div class="empty-state">
+                    Aguardando notificações... Crie um pedido para testar!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let connection = null;
+        let isConnected = false;
+        
+        // Configuração da conexão SignalR
+        function connect() {
+            const token = document.getElementById('token').value.trim();
+            
+            if (!token) {
+                alert('⚠️ Por favor, insira um token JWT válido!');
+                return;
+            }
+            
+            const connectBtn = document.getElementById('connectBtn');
+            connectBtn.disabled = true;
+            connectBtn.textContent = '⏳ Conectando...';
+            
+            // URL do hub (ajuste conforme necessário)
+            const hubUrl = `http://localhost:5154/hubs/orders?access_token=${token}`;
+            
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl)
+                .withAutomaticReconnect([0, 2000, 5000, 10000])
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+            
+            // Evento: Conexão estabelecida
+            connection.start()
+                .then(() => {
+                    console.log('✅ Conectado ao SignalR Hub!');
+                    isConnected = true;
+                    updateStatus('connected', '🟢 Conectado');
+                    document.getElementById('subscribeBtn').disabled = false;
+                    connectBtn.textContent = '✅ Conectado';
+                })
+                .catch(err => {
+                    console.error('❌ Erro ao conectar:', err);
+                    alert('Erro ao conectar: ' + err.message);
+                    updateStatus('disconnected', '⚫ Desconectado');
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = '🔌 Conectar ao Hub';
+                });
+            
+            // Evento: Reconexão automática
+            connection.onreconnecting((error) => {
+                console.warn('⚠️ Reconectando...', error);
+                updateStatus('disconnected', '🟡 Reconectando...');
+            });
+            
+            connection.onreconnected((connectionId) => {
+                console.log('✅ Reconectado! ID:', connectionId);
+                updateStatus('connected', '🟢 Conectado');
+            });
+            
+            connection.onclose((error) => {
+                console.error('❌ Conexão fechada:', error);
+                isConnected = false;
+                updateStatus('disconnected', '⚫ Desconectado');
+                document.getElementById('subscribeBtn').disabled = true;
+                connectBtn.disabled = false;
+                connectBtn.textContent = '🔌 Conectar ao Hub';
+            });
+            
+            // Listener: Confirmação de inscrição
+            connection.on('Subscribed', (data) => {
+                console.log('📫 Inscrito:', data);
+                updateStatus('subscribed', `📫 Monitorando Pedido #${data.orderId}`);
+                addNotification('info', 'Inscrito', data.message, {});
+            });
+            
+            // Listener: Mudança de status do pedido (PRINCIPAL)
+            connection.on('OrderStatusChanged', (data) => {
+                console.log('🔔 Notificação recebida:', data);
+                
+                const type = data.status === 'Confirmed' ? 'confirmed' : 'rejected';
+                addNotification(type, data.status, data.message, {
+                    'Pedido': `#${data.orderId}`,
+                    'Timestamp': new Date(data.timestamp).toLocaleString('pt-BR'),
+                    'Produto ID': data.productId,
+                    'Quantidade': data.quantityReserved || data.requestedQuantity,
+                    'Disponível': data.availableQuantity || 'N/A',
+                    'Motivo': data.reason || 'N/A'
+                });
+                
+                // Notificação do navegador (se permitido)
+                if (Notification.permission === 'granted') {
+                    new Notification(`Pedido #${data.orderId}`, {
+                        body: data.message,
+                        icon: type === 'confirmed' ? '✅' : '❌'
+                    });
+                }
+            });
+        }
+        
+        function subscribe() {
+            if (!isConnected || !connection) {
+                alert('⚠️ Conecte-se primeiro ao Hub!');
+                return;
+            }
+            
+            const orderId = parseInt(document.getElementById('orderId').value);
+            
+            if (!orderId || orderId <= 0) {
+                alert('⚠️ Insira um ID de pedido válido!');
+                return;
+            }
+            
+            connection.invoke('SubscribeToOrder', orderId)
+                .catch(err => {
+                    console.error('❌ Erro ao inscrever:', err);
+                    alert('Erro ao inscrever: ' + err.message);
+                });
+        }
+        
+        function updateStatus(className, text) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `status ${className}`;
+            statusEl.innerHTML = `<span class="status-icon">${text.split(' ')[0]}</span><span>${text}</span>`;
+        }
+        
+        function addNotification(type, status, message, details) {
+            const list = document.getElementById('notificationsList');
+            
+            // Remove empty state se existir
+            const emptyState = list.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const detailsHtml = Object.entries(details)
+                .filter(([key, value]) => value !== 'N/A')
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join(' | ');
+            
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <span class="notification-status">${status === 'Confirmed' ? '✅' : '❌'} ${status}</span>
+                    <span class="notification-time">${new Date().toLocaleTimeString('pt-BR')}</span>
+                </div>
+                <div class="notification-message">${message}</div>
+                ${detailsHtml ? `<div class="notification-details">${detailsHtml}</div>` : ''}
+            `;
+            
+            list.insertBefore(notification, list.firstChild);
+        }
+        
+        // Solicitar permissão para notificações do navegador
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    </script>
+</body>
+</html>
