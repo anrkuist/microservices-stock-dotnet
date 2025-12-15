@@ -1,4 +1,4 @@
-# E-commerce Microservices
+# Microserviços para E-commerce em .NET
 
 Sistema de e-commerce com arquitetura de microsserviços usando .NET 9, RabbitMQ e SQL Server.
 
